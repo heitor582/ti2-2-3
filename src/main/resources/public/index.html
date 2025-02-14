@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRUD Pessoa</title>
+    <style>
+        .editable {
+            background-color: #f0f8ff;
+        }
+    </style>
+</head>
+<body>
+    <h1>CRUD Pessoa</h1>
+
+    <h2>Criar Pessoa</h2>
+    <form id="create-form">
+        <label for="name">Nome:</label>
+        <input type="text" id="name" name="name" required>
+        <button type="submit">Criar</button>
+    </form>
+
+    <hr>
+
+    <h2>Listar Pessoas</h2>
+    <ul id="pessoa-list"></ul>
+
+    <hr>
+
+    <script>
+        function loadPeople() {
+            fetch('/pessoa')
+                .then(response => response.json())
+                .then(data => {
+                    const pessoaList = document.getElementById('pessoa-list');
+                    pessoaList.innerHTML = '';
+
+                    data.forEach(pessoa => {
+                        const li = document.createElement('li');
+                        li.innerHTML = `
+                            <span id="name-${pessoa.id}">${pessoa.name}</span>
+                            <button onclick="editPerson(${pessoa.id})">Editar</button>
+                            <button onclick="getPersonById(${pessoa.id})">Buscar</button>
+                            <button onclick="deletePerson(${pessoa.id})">Deletar</button>
+                        `;
+                        pessoaList.appendChild(li);
+                    });
+                });
+        }
+
+        document.getElementById('create-form').addEventListener('submit', function (e) {
+            e.preventDefault();
+            const name = document.getElementById('name').value;
+
+            fetch('/pessoa', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name })
+            })
+            .then(() => {
+                loadPeople();
+                document.getElementById('name').value = '';
+            });
+        });
+
+        function editPerson(id) {
+            const nameElement = document.getElementById(`name-${id}`);
+            const currentName = nameElement.innerText;
+
+            const input = document.createElement('input');
+            input.value = currentName;
+            input.classList.add('editable');
+            nameElement.innerHTML = '';
+            nameElement.appendChild(input);
+
+            input.addEventListener('blur', function () {
+                const newName = input.value;
+
+                fetch(`/pessoa/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: newName })
+                })
+                .then(() => {
+                    loadPeople();
+                });
+            });
+
+            input.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter') {
+                    input.blur();
+                }
+            });
+        }
+
+        function getPersonById(id) {
+            fetch(`/pessoa/${id}`)
+                .then(response => response.json())
+                .then(data => {
+                    alert('Pessoa encontrada: ' + data.name);
+                });
+        }
+
+        function deletePerson(id) {
+            fetch(`/pessoa/${id}`, {
+                method: 'DELETE'
+            })
+            .then(() => {
+                loadPeople();
+            });
+        }
+
+        window.onload = loadPeople;
+    </script>
+</body>
+</html>

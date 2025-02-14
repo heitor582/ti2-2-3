@@ -1,41 +1,68 @@
 package app;
 
+import static spark.Spark.*;
+
 import java.util.List;
+
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 
 import dao.PessoaDAO;
 import model.Pessoa;
 
 public class Application {
-	
+	private static PessoaDAO pessoaDAO = new PessoaDAO();
 	public static void main(String[] args) throws Exception {
 		
-		PessoaDAO PessoaDAO = new PessoaDAO();
-		
-		System.out.println("\n\n==== Inserir pessoas === ");
-		Pessoa Pessoa = new Pessoa("pablo");
-		if(PessoaDAO.insert(Pessoa) == true) {
-			System.out.println("Inserção com sucesso -> " + Pessoa.toString());
-		}		
-			
-		System.out.println("\n\n==== Mostrar pessoas === ");
-		List<Pessoa> Pessoas = PessoaDAO.get();
-		for (Pessoa u: Pessoas) {
-			System.out.println(u.toString());
-		}
-		Pessoa=Pessoas.get(0);
-		
-		System.out.println("\n\n==== Atualizar pessoa (código " + Pessoa.id + ") === ");
-		Pessoa.name = "teste";
-		PessoaDAO.update(Pessoa);
-		
-		System.out.println("\n\n==== Mostrar pessoa === ");
-		Pessoa = PessoaDAO.get(Pessoa.id);
-		System.out.println(Pessoa.toString());
-		
-		System.out.println("\n\n==== Excluir pessoa (código " + Pessoa.id + ") === ");
-		PessoaDAO.delete(Pessoa.id);
-		
-		PessoaDAO.close();
-		
+		  port(2555);
+	        
+	      staticFiles.location("/public");
+	        	      
+	      
+	      post("/pessoa", (request, response) -> {
+	    	  	String body = request.body();
+	    	    JsonObject jsonObject = JsonParser.parseString(body).getAsJsonObject();
+	    	    String name = jsonObject.get("name").getAsString();
+	            Pessoa pessoa = new Pessoa(name);
+	            boolean success = pessoaDAO.insert(pessoa);
+	            response.status(success ? 201 : 400);
+	            return success ? "Pessoa criada com sucesso!" : "Falha na criação da pessoa!";
+	        });
+
+	        get("/pessoa", (request, response) -> {
+	            List<Pessoa> pessoas = pessoaDAO.get();
+	            return new Gson().toJson(pessoas);
+	        });
+
+	        get("/pessoa/:id", (request, response) -> {
+	            long id = Long.parseLong(request.params(":id"));
+	            Pessoa pessoa = pessoaDAO.get(id);
+	            if (pessoa != null) {
+	                return new Gson().toJson(pessoa);
+	            } else {
+	                response.status(404);
+	                return "Pessoa não encontrada!";
+	            }
+	        });
+	        
+	        put("/pessoa/:id", (request, response) -> {
+	            long id = Long.parseLong(request.params(":id"));
+	            String body = request.body();
+	    	    JsonObject jsonObject = JsonParser.parseString(body).getAsJsonObject();
+	    	    String name = jsonObject.get("name").getAsString();
+	            Pessoa pessoa = new Pessoa(id, name);
+	            boolean success = pessoaDAO.update(pessoa);
+	            response.status(success ? 200 : 400);
+	            return success ? "Pessoa atualizada com sucesso!" : "Falha na atualização da pessoa!";
+	        });
+
+	        delete("/pessoa/:id", (request, response) -> {
+	            long id = Long.parseLong(request.params(":id"));
+	            boolean success = pessoaDAO.delete(id);
+	            response.status(success ? 200 : 400);
+	            return success ? "Pessoa excluída com sucesso!" : "Falha na exclusão da pessoa!";
+	        });
+
 	}
 }
